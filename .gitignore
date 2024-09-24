@@ -5,3 +5,4 @@ typings
 Configs/Local
 
 .vscode/launch.json
+/_condaEnv
