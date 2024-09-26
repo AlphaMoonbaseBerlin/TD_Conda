@@ -36,6 +36,22 @@ class extTDConda:
 				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
 	
 	@property
+	def condaEnv(self):
+		Path( "TDImportCache/CondaTemp" ).mkdir(exist_ok=True, parents=True)
+		Path( "TDImportCache/CondaHome" ).mkdir(exist_ok=True, parents=True)
+		return {
+			"PATH" : ";".join(
+				os.environ["PATH"].split(";") + [
+					str(self.condaDirectory.absolute()),
+					str(Path(self.condaDirectory, "Scripts").absolute())
+				]),
+			"TEMP" : str(Path( "TDImportCache/CondaTemp" ).absolute()),
+			"TMP" : str(Path( "TDImportCache/CondaTemp" ).absolute()),
+			"HOME" : str(Path( "TDImportCache/CondaHome" ).absolute())
+			
+		}
+
+	@property
 	def condaDirectory(self):
 		return Path(self.ownerComp.par.Condafolder.eval())
 
@@ -49,7 +65,7 @@ class extTDConda:
 	
 	@property
 	def condaExe(self):
-		return Path(self.condaDirectory, "_conda.exe")
+		return Path(self.condaDirectory, "conda.exe")
 	
 	def Setup(self):
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
@@ -57,33 +73,16 @@ class extTDConda:
 		
 	def condaCommand(self, commands):
 		subprocess.call(
-			[self.condaExe] + commands
+			[self.condaExe] + commands,
+			env = self.condaEnv
 		)
 
 	def envCommand(self, command):
-		"""
-		export PATH='/Users/username/.local/anaconda/envs/mamba-poc/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/username/.local/anaconda/condabin:/opt/homebrew/bin:/opt/homebrew/sbin'
-		export CONDA_PREFIX='/Users/username/.local/anaconda/envs/mamba-poc'
-		export CONDA_SHLVL='2'
-		export CONDA_DEFAULT_ENV='mamba-poc'
-		export CONDA_PROMPT_MODIFIER='(mamba-poc) '
-		export CONDA_EXE='/Users/username/.local/anaconda/bin/conda'
-		export _CE_M=''
-		export _CE_CONDA=''
-		export CONDA_PYTHON_EXE='/Users/username/.local/anaconda/bin/python'
-		export CONDA_PREFIX_1='/Users/username/.local/anaconda'"""
-		condaEnv = {
-			"PATH" : os.environ["path"] + ";" + str(self.condaDirectory.absolute()),
-			"CONDA_PREFIX" : str(self.envDirectory.absolute()),
-			"CONDA_SHLVL" : "2",
-			"CONDA_DEFAULT_ENV" : str(self.envDirectory.absolute()),
-			"CONDA_PROMPT_MODIFIER" : self.ownerComp.par.Envname.eval(),
-			"CONDA_EXE" : str(self.condaDirectory.absolute()),
-			"_CE_M" : "",
-			"_CE_CONDA" : "",
-			"CONDA_PYTHON_EXE" : str( self.condaDirectory.absolute() ),
-			"CONDA_PREFIX_1" : str( self.envFolder.absolute())
-		}
+		subprocess.call(
+			["conda", "activate", self.envDirectory.absolute()], 
+			env={
+				"PATH" : str(Path(self.condaDirectory, "condabin").absolute())
+			})
 
 		subprocess.call([self.condaExe] + command, env=condaEnv)
 
@@ -105,21 +104,35 @@ class extTDConda:
 				"/InstallationType=JustMe",
 				"/AddToPath=0",
 				"/RegisterPython=0",
+				"/NoRegistry=1", 
+				"/NoScripts=1", 
+				"/NoShortcuts=1",
 				f'/D={self.condaDirectory.absolute()}'
 			])
 			# result = installProcess.wait()
-		#
+		#	
 		except subprocess.CalledProcessError as grepexc:                                                                                                   
 			self.log("error code", grepexc.returncode, grepexc.output)
+		self.log("Installed Conda")
+		os.rename(
+			Path(self.condaDirectory, "_conda.exe"),
+			Path(self.condaDirectory, "conda.exe")
+		)
+		self.log("Renamed _conda.exe")
 
 	def createEnv(self):
 		# self.envDirectory.mkdir(exist_ok=True, parents=True)
-
+		self.log("Trying to create the environment.")
 		self.condaCommand([
-			"create", "-y","-p", 
-			f'{self.envDirectory.absolute()}',
+			"create", "-y",
+			"--no-shortcuts",
+			"-k",
+			"-p", f'{self.envDirectory.absolute()}',
 			f"python={'.'.join(python_version().split('.')[0:2])}"
 			
 			# Afaik Conda is not supporting the current version. Lol.
 		])
-	
+		self.log("Created the env I hope.")
+		# We might need to run conda init after install. This will have an impact on the os so
+		# It would be nice to find a way of using conda without having to change the 
+		# Target OS
