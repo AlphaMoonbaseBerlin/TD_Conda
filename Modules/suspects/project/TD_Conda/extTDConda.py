@@ -13,6 +13,7 @@ from platform import python_version
 import sys
 import os
 from functools import lru_cache
+import json
 
 class extTDConda:
 	"""
@@ -37,6 +38,7 @@ class extTDConda:
 				del sys.path[0]
 				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
 		self.Mount = Mount
+
 	@property
 	def condaEnv(self):
 		Path( "TDImportCache/CondaTemp" ).mkdir(exist_ok=True, parents=True)
@@ -76,8 +78,31 @@ class extTDConda:
 	def Setup(self):
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
 		if not self.envDirectory.is_dir(): self.createEnv()
-		debug( self.condaCommand(["shell.cmd.exe", "activate", self.envDirectory] ))
-	
+		self.setVSCodeSettings()
+
+	def setVSCodeSettings(self):
+		launchFile = Path( ".vscode/settings.json")
+		if not launchFile.is_file():
+			launchFile.parent.mkdir(parents=True, exist_ok=True)
+			launchFile.touch()
+			launchFile.write_text( "{}" )
+
+		with launchFile.open("r+") as launchJson:
+			launchDict:dict = json.load( launchJson )
+
+			launchDict.setdefault(
+				"python.analysis.extraPaths", 
+				[]
+				)
+			for potentialPath in [
+				str(Path(self.envDirectory, "Lib/site-packages"))
+			]:
+				if potentialPath in launchDict["python.analysis.extraPaths"]: continue
+				launchDict["python.analysis.extraPaths"].append( potentialPath )
+			launchFile.write_text( json.dumps( launchDict, indent=4 ) )
+		return
+
+
 	@property
 	def activationScript(self):
 		return self._activationScript( self.envDirectory )

@@ -3,7 +3,8 @@
     "python.analysis.stubPath": "typings",
     "python.analysis.extraPaths": [
         "TDImportCache/Lib",
-        "C:/Program Files/Derivative/TouchDesigner.2023.11880/bin/Lib"
+        "C:/Program Files/Derivative/TouchDesigner.2023.11880/bin/Lib",
+        ".cenv\\TD_Env\\Lib\\site-packages"
     ],
     "python.defaultInterpreterPath": "C:/Program Files/Derivative/TouchDesigner.2023.11880/bin/python.exe"
 }
