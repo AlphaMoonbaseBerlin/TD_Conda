@@ -12,6 +12,7 @@ import subprocess
 from platform import python_version
 import sys
 import os
+from functools import lru_cache
 
 class extTDConda:
 	"""
@@ -26,30 +27,35 @@ class extTDConda:
 				pass
 			def __enter__(mountSelf):
 				sys.path.insert(
-					Path( self.envDirectory, "lib"),
-					0
+					0,
+					self.libPathString
 				)
-				os.environ["_PYTHONPATH"] = os.environ["PYTHONPATH"]
-				os.environ["PYTHONPATH"] = Path( self.envDirectory, "lib")
+				os.environ["_PYTHONPATH"] = os.environ.get("PYTHONPATH", "")
+				os.environ["PYTHONPATH"] = self.libPathString
+
 			def __exit__(mountSelf, type, value, traceback):
 				del sys.path[0]
 				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
-	
+		self.Mount = Mount
 	@property
 	def condaEnv(self):
 		Path( "TDImportCache/CondaTemp" ).mkdir(exist_ok=True, parents=True)
 		Path( "TDImportCache/CondaHome" ).mkdir(exist_ok=True, parents=True)
 		return {
+			**os.environ,
 			"PATH" : ";".join(
 				os.environ["PATH"].split(";") + [
 					str(self.condaDirectory.absolute()),
 					str(Path(self.condaDirectory, "Scripts").absolute())
 				]),
-			"TEMP" : str(Path( "TDImportCache/CondaTemp" ).absolute()),
-			"TMP" : str(Path( "TDImportCache/CondaTemp" ).absolute()),
-			"HOME" : str(Path( "TDImportCache/CondaHome" ).absolute())
-			
+			"TEMP" 	: str(Path( "TDImportCache/CondaTemp" ).absolute()),
+			"TMP" 	: str(Path( "TDImportCache/CondaTemp" ).absolute()),
+			"USERPROFILE" 	: str(Path( "TDImportCache/CondaHome" ).absolute())
 		}
+
+	@property
+	def libPathString(self):
+		return str( Path(self.envDirectory, "Lib/site-packages").absolute() )
 
 	@property
 	def condaDirectory(self):
@@ -70,21 +76,34 @@ class extTDConda:
 	def Setup(self):
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
 		if not self.envDirectory.is_dir(): self.createEnv()
-		
+		debug( self.condaCommand(["shell.cmd.exe", "activate", self.envDirectory] ))
+	
+	@property
+	def activationScript(self):
+		return self._activationScript( self.envDirectory )
+	
+	@lru_cache
+	def _activationScript(self, env):
+		with open(self.condaCommand(["shell.cmd.exe", "activate", env])) as activationScript:
+			return activationScript.read()
+	
+
 	def condaCommand(self, commands):
-		subprocess.call(
+		return subprocess.check_output(
 			[self.condaExe] + commands,
 			env = self.condaEnv
-		)
+		).decode()
 
 	def envCommand(self, command):
-		subprocess.call(
-			["conda", "activate", self.envDirectory.absolute()], 
-			env={
-				"PATH" : str(Path(self.condaDirectory, "condabin").absolute())
-			})
-
-		subprocess.call([self.condaExe] + command, env=condaEnv)
+		
+		with subprocess.Popen(
+			["cmd.exe"], 
+			env=self.condaEnv,
+			stdin=subprocess.PIPE ) as condaEnvContext:
+			condaEnvContext.stdin.write( (self.activationScript + "\n").encode() )
+			condaEnvContext.stdin.write( (" ".join([str(self.condaExe.absolute())] + command) + "\n").encode() )
+			
+			
 
 	def Install(self, package):
 		self.envCommand(["install", package])
@@ -136,3 +155,10 @@ class extTDConda:
 		# We might need to run conda init after install. This will have an impact on the os so
 		# It would be nice to find a way of using conda without having to change the 
 		# Target OS
+
+	def Reset(self):
+		self.condaCommand("config --remove-key proxy_servers".split(" "))
+		self.condaCommand("clean --source-cache".split(" "))
+
+	def Info(self):
+		self.condaCommand(["info"])
