@@ -14,6 +14,8 @@ import sys
 import os
 from functools import lru_cache
 import json
+import importlib
+
 
 class extTDConda:
 	"""
@@ -38,6 +40,8 @@ class extTDConda:
 				del sys.path[0]
 				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
 		self.Mount = Mount
+		if self.ownerComp.par.Autosetup.eval():
+			self.Setup()
 
 	@property
 	def condaEnv(self):
@@ -75,12 +79,20 @@ class extTDConda:
 	def condaExe(self):
 		return Path(self.condaDirectory, "conda.exe")
 	
+	@property
+	def shell(self):
+		if sys.platform == "win32":
+			return "cmd.exe"
+		elif sys.platform == "darwin":
+			return "bash"
+
 	def Setup(self):
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
 		if not self.envDirectory.is_dir(): self.createEnv()
 		self.setVSCodeSettings()
 
 	def setVSCodeSettings(self):
+		self.log("Setting up .vscode file.")
 		launchFile = Path( ".vscode/settings.json")
 		if not launchFile.is_file():
 			launchFile.parent.mkdir(parents=True, exist_ok=True)
@@ -107,38 +119,52 @@ class extTDConda:
 	def activationScript(self):
 		return self._activationScript( self.envDirectory )
 	
-	@lru_cache
+	@lru_cache(maxsize=1)
 	def _activationScript(self, env):
-		with open(self.condaCommand(["shell.cmd.exe", "activate", env])) as activationScript:
-			return activationScript.read()
+		# with open(self.condaCommand([f"shell.{self.shell}", "activate", env])) as activationScript:
+		self.log("Fetching activationscript.")
+		with open(self.condaCommand([f"shell.{self.shell}", "activate", env])) as activationScript:
+			result = activationScript.read()
+			self.log("Got Activationscript", result)
+			return result
 	
 
-	def condaCommand(self, commands):
+	def condaCommand(self, commands) -> str:
+		self.log("Running Condacommands", commands)
 		return subprocess.check_output(
 			[self.condaExe] + commands,
 			env = self.condaEnv
 		).decode()
 
-	def envCommand(self, command):
-		
+	def envCommand(self, command, daemon = False) -> None|subprocess.Popen:
+		daemon = True
+		self.log("Running envCommand", command, "Daemon:", daemon)
 		with subprocess.Popen(
-			["cmd.exe"], 
-			env=self.condaEnv,
-			stdin=subprocess.PIPE ) as condaEnvContext:
+				[self.shell], 
+				env=self.condaEnv,
+				stdin = subprocess.PIPE,
+				# stdout=subprocess.PIPE
+				) as condaEnvContext:
+			self.log("Running condaEnv Setupscript")
 			condaEnvContext.stdin.write( (self.activationScript + "\n").encode() )
+			self.log("Activated conda ENV")
 			condaEnvContext.stdin.write( (" ".join([str(self.condaExe.absolute())] + command) + "\n").encode() )
+			self.log("Run Command.")
+			if daemon: 
+				self.log("Running as Daemon, returning context.")
+				return condaEnvContext
 			
-			
-
-	def Install(self, package):
-		self.envCommand(["install", package])
-	
+			# while output:=condaEnvContext.: 
+			#	self.log("Got output", output)
+			# self.log("No Longer getting output from shell, killing it.")
+			# condaEnvContext.kill()
+			return
 
 	def downloadAndUnpack(self):
 		# Downlading 
-		self.log("Downloadin COnda Installer")
+		self.log("Downloadin Conda Installer")
 		condaInstaller:Path 				= self.ownerComp.op("condaDependency").GetRemoteFilepath()
-		self.log("RUnning Installer")
+		self.log("Running Installer")
 		#self.condaDirectory.mkdir(exist_ok=True, parents=True)
 
 		try:
@@ -167,19 +193,15 @@ class extTDConda:
 	def createEnv(self):
 		# self.envDirectory.mkdir(exist_ok=True, parents=True)
 		self.log("Trying to create the environment.")
-		self.condaCommand([
+		createResult = self.condaCommand([
 			"create", "-y",
 			"--no-shortcuts",
 			"-k",
 			"-p", f'{self.envDirectory.absolute()}',
 			f"python={'.'.join(python_version().split('.')[0:2])}"
-			
-			# Afaik Conda is not supporting the current version. Lol.
-		])
+		] 
+		+ tdu.split( self.ownerComp.par.Setuppackages.eval()))
 		self.log("Created the env I hope.")
-		# We might need to run conda init after install. This will have an impact on the os so
-		# It would be nice to find a way of using conda without having to change the 
-		# Target OS
 
 	def Reset(self):
 		self.condaCommand("config --remove-key proxy_servers".split(" "))
@@ -187,3 +209,30 @@ class extTDConda:
 
 	def Info(self):
 		self.condaCommand(["info"])
+
+	def InstallPackage(self, package):
+		self.envCommand(["install", package])
+
+	def TestModule(self, module:str) -> bool:
+		with self.Mount():
+			self.log("Testing for module", module)
+			try:
+				foundModule = importlib.util.find_spec( module )	
+			except ModuleNotFoundError as exc:
+				self.log( "Module not Found Exception!", exc )
+				return False
+			
+			if foundModule is None:
+				self.log( "Module does not exist", module )
+				return False
+				
+			return True
+		
+	def PrepareModule(self, moduleName, packageName = ""):
+		if self.TestModule( moduleName ): return
+		self.InstallPackage( packageName or moduleName)
+
+	def Run(self, filepath):
+		self.envCommand(
+			"run", filepath, daemon=True
+		)
