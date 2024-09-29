@@ -40,6 +40,27 @@ class extTDConda:
 				del sys.path[0]
 				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
 		self.Mount = Mount
+
+		class EnvShell(object):
+			def __init__(contextSelf):
+				contextSelf.shellProcess = None
+				
+			def __enter__(contextSelf):
+				contextSelf.shellProcess = self.SpawnEnvShell()
+				contextSelf.shellProcess.stdin.write(
+					(self.activationScript + "\n").encode()
+				)
+
+			def __exit__(contextSelf, type, value, traceback):
+				contextSelf.shellProcess.terminate()
+
+			def Execute(contextSelf, command):
+				if isinstance(command, str): command = tdu.split(command)
+				contextSelf.shellProcess.stdin.write(" ".join(
+						command
+					).encode()
+				)
+		self.EnvShell = EnvShell
 		if self.ownerComp.par.Autosetup.eval():
 			self.Setup()
 
@@ -136,29 +157,15 @@ class extTDConda:
 			env = self.condaEnv
 		).decode()
 
-	def envCommand(self, command, daemon = False) -> None|subprocess.Popen:
-		daemon = True
-		self.log("Running envCommand", command, "Daemon:", daemon)
-		with subprocess.Popen(
+	def SpawnEnvShell(self):
+		shellProcess = subprocess.Popen(
 				[self.shell], 
 				env=self.condaEnv,
 				stdin = subprocess.PIPE,
 				# stdout=subprocess.PIPE
-				) as condaEnvContext:
-			self.log("Running condaEnv Setupscript")
-			condaEnvContext.stdin.write( (self.activationScript + "\n").encode() )
-			self.log("Activated conda ENV")
-			condaEnvContext.stdin.write( (" ".join([str(self.condaExe.absolute())] + command) + "\n").encode() )
-			self.log("Run Command.")
-			if daemon: 
-				self.log("Running as Daemon, returning context.")
-				return condaEnvContext
-			
-			# while output:=condaEnvContext.: 
-			#	self.log("Got output", output)
-			# self.log("No Longer getting output from shell, killing it.")
-			# condaEnvContext.kill()
-			return
+				)
+		shellProcess.stdin.write( (self.activationScript + "\n").encode() )
+		return shellProcess
 
 	def downloadAndUnpack(self):
 		# Downlading 
@@ -210,8 +217,9 @@ class extTDConda:
 	def Info(self):
 		self.condaCommand(["info"])
 
-	def InstallPackage(self, package):
-		self.envCommand(["install", package])
+	def InstallPackage(self, package, installer = "conda"):
+		with self.EnvShell() as shell:
+			shell.Execute([installer, package])
 
 	def TestModule(self, module:str) -> bool:
 		with self.Mount():
