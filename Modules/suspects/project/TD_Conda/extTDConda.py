@@ -48,18 +48,13 @@ class extTDConda:
 			def __enter__(contextSelf):
 				self.log("Entering Shell Context")
 				contextSelf.shellProcess = self.SpawnEnvShell()
-				contextSelf.shellProcess.stdin.write(
-					(self.activationScript + "\n").encode()
-				)
-				contextSelf.shellProcess.stdin.flush()
 				self.log("Returning shellcontext")
 				return contextSelf
 
 			def __exit__(contextSelf, type, value, traceback):
 				self.log("Exiting EnvShell")
 				
-				# So we actually, for whatever reason, have to call this to force the flushing as flush has no effect.
-				# This is def not the way we want it. 
+				# Without this, the command is not getting executed, even though it is getting flushed.
 				contextSelf.shellProcess.communicate()
 	
 				self.log("Send exit command.")
@@ -69,10 +64,8 @@ class extTDConda:
 			def Execute(contextSelf, command):
 				if isinstance(command, str): command = tdu.split(command)
 				self.log("Exeuting Command", command)
-				contextSelf.shellProcess.Write(" ".join(
-						command + ["\n"]
-					)
-				)
+				contextSelf.shellProcess.Write(" ".join(command))
+				
 
 		self.EnvShell = EnvShell
 		if self.ownerComp.par.Autosetup.eval():
@@ -176,12 +169,15 @@ class extTDConda:
 				[self.shell], 
 				env = self.condaEnv,
 				stdin = subprocess.PIPE,
+				text = True
 				# stdout=subprocess.PIPE
 				)
 		self.log("Spawned shellProcess")
 		def Write(command:str):
-			shellProcess.stdin.write( (command + "\n").encode() )
+			shellProcess.stdin.write( command + "\n" )
 			shellProcess.stdin.flush()
+			
+			# Flushign twice seems to do the trick?
 
 		setattr( shellProcess, "Write", Write)
 		shellProcess.Write( self.activationScript )
