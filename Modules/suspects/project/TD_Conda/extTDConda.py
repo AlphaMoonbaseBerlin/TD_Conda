@@ -57,8 +57,6 @@ class extTDConda:
 
 			def __exit__(contextSelf, type, value, traceback):
 				self.log("Exiting EnvShell")
-				contextSelf.shellProcess.stdin.flush()
-				# contextSelf.shellProcess.stdin.close()
 				
 				# So we actually, for whatever reason, have to call this to force the flushing as flush has no effect.
 				# This is def not the way we want it. 
@@ -71,12 +69,10 @@ class extTDConda:
 			def Execute(contextSelf, command):
 				if isinstance(command, str): command = tdu.split(command)
 				self.log("Exeuting Command", command)
-			
-				contextSelf.shellProcess.stdin.write(" ".join(
+				contextSelf.shellProcess.Write(" ".join(
 						command + ["\n"]
-					).encode()
+					)
 				)
-				contextSelf.shellProcess.stdin.flush()
 
 		self.EnvShell = EnvShell
 		if self.ownerComp.par.Autosetup.eval():
@@ -183,9 +179,12 @@ class extTDConda:
 				# stdout=subprocess.PIPE
 				)
 		self.log("Spawned shellProcess")
-		shellProcess.stdin.write( (self.activationScript + "\n").encode() )
-		shellProcess.stdin.flush()
+		def Write(command:str):
+			shellProcess.stdin.write( (command + "\n").encode() )
+			shellProcess.stdin.flush()
 
+		setattr( shellProcess, "Write", Write)
+		shellProcess.Write( self.activationScript )
 		self.log("Wrote activationScript to shell")
 		return shellProcess
 
@@ -264,5 +263,5 @@ class extTDConda:
 
 	def Run(self, filepath):
 		shell = self.SpawnEnvShell()
-		shell.stdin.write(["conda", "run", str(filepath)])
+		shell.Write(["conda", "run", str(filepath)])
 		return shell
