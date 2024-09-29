@@ -46,20 +46,38 @@ class extTDConda:
 				contextSelf.shellProcess = None
 				
 			def __enter__(contextSelf):
+				self.log("Entering Shell Context")
 				contextSelf.shellProcess = self.SpawnEnvShell()
 				contextSelf.shellProcess.stdin.write(
 					(self.activationScript + "\n").encode()
 				)
+				contextSelf.shellProcess.stdin.flush()
+				self.log("Returning shellcontext")
+				return contextSelf
 
 			def __exit__(contextSelf, type, value, traceback):
-				contextSelf.shellProcess.terminate()
+				self.log("Exiting EnvShell")
+				contextSelf.shellProcess.stdin.flush()
+				# contextSelf.shellProcess.stdin.close()
+				
+				# So we actually, for whatever reason, have to call this to force the flushing as flush has no effect.
+				# This is def not the way we want it. 
+				contextSelf.shellProcess.communicate()
+	
+				self.log("Send exit command.")
+				contextSelf.shellProcess.kill()
+				self.log("Called termination. Why did it ask for more?")
 
 			def Execute(contextSelf, command):
 				if isinstance(command, str): command = tdu.split(command)
+				self.log("Exeuting Command", command)
+			
 				contextSelf.shellProcess.stdin.write(" ".join(
-						command
+						command + ["\n"]
 					).encode()
 				)
+				contextSelf.shellProcess.stdin.flush()
+
 		self.EnvShell = EnvShell
 		if self.ownerComp.par.Autosetup.eval():
 			self.Setup()
@@ -160,11 +178,15 @@ class extTDConda:
 	def SpawnEnvShell(self):
 		shellProcess = subprocess.Popen(
 				[self.shell], 
-				env=self.condaEnv,
+				env = self.condaEnv,
 				stdin = subprocess.PIPE,
 				# stdout=subprocess.PIPE
 				)
+		self.log("Spawned shellProcess")
 		shellProcess.stdin.write( (self.activationScript + "\n").encode() )
+		shellProcess.stdin.flush()
+
+		self.log("Wrote activationScript to shell")
 		return shellProcess
 
 	def downloadAndUnpack(self):
@@ -219,7 +241,7 @@ class extTDConda:
 
 	def InstallPackage(self, package, installer = "conda"):
 		with self.EnvShell() as shell:
-			shell.Execute([installer, package])
+			shell.Execute([installer,"install", package])
 
 	def TestModule(self, module:str) -> bool:
 		with self.Mount():
@@ -236,11 +258,11 @@ class extTDConda:
 				
 			return True
 		
-	def PrepareModule(self, moduleName, packageName = ""):
+	def PrepareModule(self, moduleName, packageName = "", installer = "conda"):
 		if self.TestModule( moduleName ): return
-		self.InstallPackage( packageName or moduleName)
+		self.InstallPackage( packageName or moduleName, installer=installer)
 
 	def Run(self, filepath):
-		self.envCommand(
-			"run", filepath, daemon=True
-		)
+		shell = self.SpawnEnvShell()
+		shell.stdin.write(["conda", "run", str(filepath)])
+		return shell
