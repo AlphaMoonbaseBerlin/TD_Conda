@@ -24,8 +24,6 @@ class extTDConda:
 	def __init__(self, ownerComp):
 		# The component to which this extension is attached
 		self.ownerComp = ownerComp
-		if sys.platform == "darwin":
-			raise NotImplemented("MAC OS is currently not supported.")
 		
 		self.log = self.ownerComp.op("logger").Log
 		class Mount(object):
@@ -115,7 +113,14 @@ class extTDConda:
 			return "bash"
 
 	def Setup(self):
+		if sys.platform == "darwin":
+			raise NotImplemented("MAC OS is currently not supported.")
+		
+		if " " in self.condaDirectory or " " in self.envDirectory:
+			raise Exception("Invalid path. The path contains spaces.")
+		
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
+		
 		if not self.envDirectory.is_dir(): self.createEnv()
 		self.setVSCodeSettings()
 
