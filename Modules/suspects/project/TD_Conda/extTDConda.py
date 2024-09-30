@@ -80,7 +80,8 @@ class extTDConda:
 				]),
 			"TEMP" 	: str(Path( "TDImportCache/CondaTemp" ).absolute()),
 			"TMP" 	: str(Path( "TDImportCache/CondaTemp" ).absolute()),
-			"USERPROFILE" 	: str(Path( "TDImportCache/CondaHome" ).absolute())
+			"USERPROFILE" 	: str(Path( "TDImportCache/CondaHome" ).absolute()),
+			"LOCALAPPDATA"  : str(Path( "TDImportCache/LocalAppData" ).absolute())
 		}
 
 	@property
