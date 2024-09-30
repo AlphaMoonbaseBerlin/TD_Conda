@@ -7,6 +7,7 @@ The setupprcoess
 - Downloads the latest miniconda-version and unpacks it in to the specified folder.
 - Creates a conda environment in the specified folder und the specified name.
 - Creates a refference to the ENV-Sitepackagesfolder in the .vscode/settings.json
+- 
 This process can take a while, so wait a moment.
 
 To use the componnt in TD there is a pretty streight forward API.
@@ -16,7 +17,7 @@ You ca use it in two ways: Launch subprocesses or install and import python modu
 To install a module if ot already existing use
 ```op("TD_Conda").InstallPackage( packageName, installer = "conda"|"pip")```
 to check if a module is already installed, if not nstall it, use 
-```op("TD_Conda").PreapreModule( moduleName, packageName = moduleName, installer = "conda"|"pip")```
+```op("TD_Conda").PrepareModule( moduleName, packageName = moduleName, installer = "conda"|"pip")```
 
 To import the module you need to mount the env. This keeps TD_Conda from poluting other potentia env or TD_Internal modules.
 ```python
