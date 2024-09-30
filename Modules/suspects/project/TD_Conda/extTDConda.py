@@ -24,6 +24,9 @@ class extTDConda:
 	def __init__(self, ownerComp):
 		# The component to which this extension is attached
 		self.ownerComp = ownerComp
+		if sys.platform == "darwin":
+			raise NotImplemented("MAC OS is currently not supported.")
+		
 		self.log = self.ownerComp.op("logger").Log
 		class Mount(object):
 			def __init__(mountSelf):
@@ -218,7 +221,8 @@ class extTDConda:
 			"--no-shortcuts",
 			"-k",
 			"-p", f'{self.envDirectory.absolute()}',
-			f"python={'.'.join(python_version().split('.')[0:2])}"
+			# f"python={'.'.join(python_version().split('.')[0:2])}"
+			f"python={self.ownerComp.par.Pythonversion.eval()}"
 		] 
 		+ tdu.split( self.ownerComp.par.Setuppackages.eval()))
 		self.log("Created the env I hope.")
