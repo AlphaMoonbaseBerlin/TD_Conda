@@ -7,3 +7,4 @@ Configs/Local
 .vscode/launch.json
 /_condaEnv
 /.cenv
+/pip

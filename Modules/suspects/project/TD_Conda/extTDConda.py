@@ -53,18 +53,14 @@ class extTDConda:
 
 			def __exit__(contextSelf, type, value, traceback):
 				self.log("Exiting EnvShell")
-				
 				# Without this, the command is not getting executed, even though it is getting flushed.
-				contextSelf.shellProcess.communicate()
-	
-				self.log("Send exit command.")
-				contextSelf.shellProcess.kill()
-				self.log("Called termination. Why did it ask for more?")
+				contextSelf.shellProcess.communicate()				
+				contextSelf.shellProcess.terminate()
+				contextSelf.shellProcess.wait()
 
 			def Execute(contextSelf, command):
-				if isinstance(command, str): command = tdu.split(command)
 				self.log("Exeuting Command", command)
-				contextSelf.shellProcess.Write(" ".join(command))
+				contextSelf.shellProcess.Write(command)
 				
 
 		self.EnvShell = EnvShell
@@ -174,11 +170,10 @@ class extTDConda:
 				)
 		self.log("Spawned shellProcess")
 		def Write(command:str):
-			shellProcess.stdin.write( command + "\n" )
+			if isinstance(command, str): command = tdu.split(command)
+			shellProcess.stdin.write( " ".join(command) + "\n" )
 			shellProcess.stdin.flush()
 			
-			# Flushign twice seems to do the trick?
-
 		setattr( shellProcess, "Write", Write)
 		shellProcess.Write( self.activationScript )
 		self.log("Wrote activationScript to shell")
@@ -259,5 +254,5 @@ class extTDConda:
 
 	def Run(self, filepath):
 		shell = self.SpawnEnvShell()
-		shell.Write(["conda", "run", str(filepath)])
+		shell.Write(["python", str(filepath)])
 		return shell
