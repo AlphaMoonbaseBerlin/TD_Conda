@@ -19,7 +19,7 @@ to check if a module is already installed, if not nstall it, use
 ```op("TD_Conda").PreapreModule( moduleName, packageName = moduleName, installer = "conda"|"pip")```
 
 To import the module you need to mount the env. This keeps TD_Conda from poluting other potentia env or TD_Internal modules.
-```
+```python
 with op("TD_Conda").Mount():
   import moduleName
 ```
@@ -38,7 +38,7 @@ with op("TD_Conda").EnvShell() as envShell:
   envShell.Execute("aimg videogen --start-image rocket.png")
 ```
 
-If you want to run the process as a damon, use the spawn-method.
+If you want to run the process as a damon, use the run-method.
 ```python
 op("TD_Conda").InstallPackage("cuda")
 op("TD_Conda").InstallPackage(
@@ -47,6 +47,15 @@ op("TD_Conda").InstallPackage(
 whisperProcess = op("TD_Conda").Run(
         "run_server.py"
     )
+```
+
+or, going bare-metal, the spawnMethod
+```python
+process = op("TD_Conda").SpawnEnvShell()
+process.Write("conda install cuda")
+process.write("pip install whisper-live")
+process.write("pip install "numpy==1.26.4 --force")
+process.write("python run_server.py")
 ```
 
 You can now invoke other commands using the execute function. (Not the best example, but whatever).
