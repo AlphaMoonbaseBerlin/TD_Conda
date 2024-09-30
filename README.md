@@ -1,5 +1,5 @@
 # TD_Conda
-A direct, dependency free implementation fo miniconda for TouchDesigner.
+A direct, hands free implementation fo miniconda for TouchDesigner without the need for user-interaction.
 
 # DOCS
 If Auto Setup is set to true, the comp will Setup the first time it is initialised. 
