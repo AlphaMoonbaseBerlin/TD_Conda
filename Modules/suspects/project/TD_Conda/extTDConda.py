@@ -116,7 +116,8 @@ class extTDConda:
 		if sys.platform == "darwin":
 			raise NotImplemented("MAC OS is currently not supported.")
 		
-		if " " in self.condaDirectory or " " in self.envDirectory:
+		if (" " in str(self.condaDirectory.absolute()) or 
+			" " in str(self.envDirectory.absolute())):
 			raise Exception("Invalid path. The path contains spaces.")
 		
 		if not self.condaDirectory.is_dir(): self.downloadAndUnpack()
