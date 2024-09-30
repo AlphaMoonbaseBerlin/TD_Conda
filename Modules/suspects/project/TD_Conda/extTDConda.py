@@ -174,7 +174,7 @@ class extTDConda:
 				)
 		self.log("Spawned shellProcess")
 		def Write(command:str):
-			if isinstance(command, str): command = tdu.split(command)
+			if isinstance(command, str): command = command.split(" ")
 			shellProcess.stdin.write( " ".join(command) + "\n" )
 			shellProcess.stdin.flush()
 			
