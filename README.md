@@ -54,9 +54,9 @@ or, going bare-metal, the spawnMethod
 ```python
 process = op("TD_Conda").SpawnEnvShell()
 process.Write("conda install cuda")
-process.write("pip install whisper-live")
-process.write("pip install "numpy==1.26.4 --force")
-process.write("python run_server.py")
+process.Write("pip install whisper-live")
+process.Write('pip install "numpy==1.26.4 --force')
+process.Write("python run_server.py")
 ```
 
 You can now invoke other commands using the execute function. (Not the best example, but whatever).
