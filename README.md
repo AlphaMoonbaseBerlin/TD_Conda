@@ -20,8 +20,9 @@ to check if a module is already installed, if not nstall it, use
 ```op("TD_Conda").PrepareModule( moduleName, packageName = moduleName, installer = "conda"|"pip")```
 
 To import the module you need to mount the env. This keeps TD_Conda from poluting other potentia env or TD_Internal modules.
+When passing clearModules = False, this will remove the already imported modules from the importCache, resulting in a fresh new import. This is reset after the contextmanager is elft.
 ```python
-with op("TD_Conda").Mount():
+with op("TD_Conda").Mount( clearModules = True):
   import moduleName
 ```
 
