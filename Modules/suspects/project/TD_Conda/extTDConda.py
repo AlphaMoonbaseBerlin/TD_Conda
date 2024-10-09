@@ -27,19 +27,32 @@ class extTDConda:
 		
 		self.log = self.ownerComp.op("logger").Log
 		class Mount(object):
-			def __init__(mountSelf):
+			def __init__(mountSelf, clearModules = False):
+				mountSelf.clearModules = clearModules
+				mountSelf.path = None
+				mountSelf.modules = None
+				mountSelf.pythonpath = ""
 				pass
+
 			def __enter__(mountSelf):
+				
+				if mountSelf.clearModules:
+					mountSelf.modules = sys.modules.copy()
+					sys.modules = {}
+				mountSelf.path = sys.path.copy()
+				mountSelf.pythonpath = os.environ.get("PYTHONPATH", "")
+
 				sys.path.insert(
 					0,
 					self.libPathString
 				)
-				os.environ["_PYTHONPATH"] = os.environ.get("PYTHONPATH", "")
 				os.environ["PYTHONPATH"] = self.libPathString
 
 			def __exit__(mountSelf, type, value, traceback):
-				del sys.path[0]
-				os.environ["PYTHONPATH"] = os.environ["_PYTHONPATH"]
+				if mountSelf.modules:
+					sys.modules = mountSelf.modules
+				sys.path = mountSelf.path
+				os.environ["PYTHONPATH"] = mountSelf.pythonpath
 		self.Mount = Mount
 
 		class EnvShell(object):
