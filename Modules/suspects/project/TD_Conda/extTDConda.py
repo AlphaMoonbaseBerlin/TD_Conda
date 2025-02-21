@@ -15,7 +15,7 @@ import os
 from functools import lru_cache
 import json
 import importlib
-
+from copy import copy
 
 class extTDConda:
 	"""
@@ -35,24 +35,30 @@ class extTDConda:
 				pass
 
 			def __enter__(mountSelf):
-				
 				if mountSelf.clearModules:
 					mountSelf.modules = sys.modules.copy()
 					sys.modules = {}
 				mountSelf.path = sys.path.copy()
-				mountSelf.pythonpath = os.environ.get("PYTHONPATH", "")
+				mountSelf.environ = copy( os.environ )
 
 				sys.path.insert(
 					0,
 					self.libPathString
 				)
+				
 				os.environ["PYTHONPATH"] = self.libPathString
+				for line in self.activationScript.split("\n"):
+					if not line.startswith("@SET"): continue 
+					call, target = line.split(" ", maxsplit=1)
+					envName, envValue = target.strip('"').split("=")
+					os.environ[envName] = envValue
+
 
 			def __exit__(mountSelf, type, value, traceback):
 				if mountSelf.modules:
 					sys.modules = mountSelf.modules
 				sys.path = mountSelf.path
-				os.environ["PYTHONPATH"] = mountSelf.pythonpath
+				os.environ = mountSelf.environ
 		self.Mount = Mount
 
 		class EnvShell(object):
@@ -210,9 +216,13 @@ class extTDConda:
 		#self.condaDirectory.mkdir(exist_ok=True, parents=True)
 
 		try:
-			result = subprocess.call([
+			#if self.ownerComp.par.Notifiyinstall:
+			#	ui.messageBox("Installing Conda",
+			#	  f"""Instaling conda in to the project-repository under the path {self.condaDirectory.absolute()}.""")
+			subprocess.call([
 				condaInstaller,
 				"/S", 
+				"/V"
 				"/InstallationType=JustMe",
 				"/AddToPath=0",
 				"/RegisterPython=0",

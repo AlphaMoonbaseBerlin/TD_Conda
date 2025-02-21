@@ -4,7 +4,10 @@
     "python.analysis.extraPaths": [
         "TDImportCache/Lib",
         "C:/Program Files/Derivative/TouchDesigner.2023.11880/bin/Lib",
-        ".cenv\\TD_Env\\Lib\\site-packages"
+        ".cenv\\TD_Env\\Lib\\site-packages",
+        ".cenv\\TD_Env_Cuda\\Lib\\site-packages",
+        ".cenv\\TD_Env_Cuda_Torch\\Lib\\site-packages",
+        ".cenv\\CudaTorch\\Lib\\site-packages"
     ],
     "python.defaultInterpreterPath": "C:/Program Files/Derivative/TouchDesigner.2023.11880/bin/python.exe"
 }
