@@ -1,3 +1,6 @@
+Moved To: https://github.com/PlusPlusOne-GmbH/TD_PyPaIn
+
+
 # TD_Conda
 A direct, hands free implementation fo miniconda for TouchDesigner without the need for user-interaction.
 
